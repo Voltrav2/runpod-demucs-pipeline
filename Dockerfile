@@ -1,9 +1,12 @@
-FROM python:3.10-slim
+FROM python:3.9
 
+# Gerekli paketleri yükle
+RUN apt-get update && apt-get install -y ffmpeg
+
+# Geri kalan kurulumlar
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
 
 COPY . .
-
-CMD ["python3", "-u", "rp_handler.py"]
+CMD ["python", "rp_handler.py"]
