@@ -1,2 +1,5 @@
 runpod
 demucs
+torch
+numpy
+wget
