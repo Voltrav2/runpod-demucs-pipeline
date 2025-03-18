@@ -1,5 +1,7 @@
 runpod
 demucs
 torch
+torchaudio
 numpy
 wget
+requests
