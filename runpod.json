@@ -1,0 +1,7 @@
+{
+  "gpu": true,
+  "container": {
+    "entrypoint": "python /app/rp_handler.py",
+    "image": "ghcr.io/Voltrav2/runpod-demucs-pipeline:latest"
+  }
+}
