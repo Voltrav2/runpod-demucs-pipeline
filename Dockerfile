@@ -1,17 +1,20 @@
+# Temel Python image'ı
 FROM python:3.10-slim
 
-# Çalışma dizini oluştur
+# Gerekli bağımlılıkları yükle
+RUN apt-get update && apt-get install -y \
+    ffmpeg wget curl && \
+    apt-get clean
+
+# Çalışma dizini
 WORKDIR /app
 
-# Gerekli paketleri yükle
-RUN apt-get update && apt-get install -y ffmpeg wget && apt-get clean
+# Gerekli Python paketlerini yükle
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Python bağımlılıklarını yükle
-RUN pip install --no-cache-dir runpod demucs torch numpy requests
+# Kod dosyalarını container içine kopyala
+COPY . .
 
-# API handler dosyasını ekleyelim
-COPY rp_handler.py /app/rp_handler.py
-COPY runpod.json /app/runpod.json
-
-# Çalıştırma komutu
-CMD ["python", "-u", "rp_handler.py"]
+# Docker container başlatıldığında çalıştırılacak komut
+CMD ["python", "server.py"]
