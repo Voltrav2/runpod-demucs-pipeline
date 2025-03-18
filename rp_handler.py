@@ -1,62 +1,43 @@
 import runpod
-import demucs.separate
+import subprocess
 import os
 import requests
-import shutil
 
-def handler(event):
-    input_audio = event['input'].get('audio')
+OUTPUT_DIR = "/app/separated"
 
-    if not input_audio:
-        return {"error": "Audio URL is missing."}
-
-    job_id = event.get("id", "unknown_job")
-    local_audio_path = f"/tmp/{job_id}.mp3"
-
-    # Dosyayı indir
-    try:
-        response = requests.get(input_audio, stream=True)
-        if response.status_code == 200:
-            with open(local_audio_path, "wb") as audio_file:
-                for chunk in response.iter_content(chunk_size=8192):
-                    audio_file.write(chunk)
-        else:
-            return {"error": "Failed to download audio file."}
-    except Exception as e:
-        return {"error": f"Error downloading file: {str(e)}"}
-
-    # Demucs işlemi
-    output_folder = "/app/separated"
-    os.system(f"demucs -o {output_folder} {local_audio_path}")
-
-    # Yeni çıkış dizinini kontrol et
-    expected_path = f"{output_folder}/htdemucs/{job_id}"
-    old_expected_path = f"{output_folder}/mdx_extra/{job_id}"  # Eski model olabilir
-
-    # Hangi dizinde dosyalar var, onu kontrol et
-    if os.path.exists(expected_path):
-        vocal_path = f"{expected_path}/vocals.wav"
-        no_vocal_path = f"{expected_path}/no_vocals.wav"
-    elif os.path.exists(old_expected_path):
-        vocal_path = f"{old_expected_path}/vocals.wav"
-        no_vocal_path = f"{old_expected_path}/no_vocals.wav"
+# Catbox'a yükleme fonksiyonu
+def upload_to_catbox(file_path):
+    url = "https://catbox.moe/user/api.php"
+    files = {"fileToUpload": open(file_path, "rb")}
+    data = {"reqtype": "fileupload"}
+    response = requests.post(url, files=files, data=data)
+    
+    if response.status_code == 200:
+        return response.text.strip()
     else:
-        return {"error": "Demucs output files not found."}
+        return None
 
-    # Çıktıları yeni bir dizine taşıyalım
-    output_path = f"/app/musics/{job_id}"
-    os.makedirs(output_path, exist_ok=True)
+# RunPod işleyicisi
+def handler(job):
+    audio_url = job["input"]["audio"]
 
-    try:
-        shutil.move(vocal_path, f"{output_path}/vocals.mp3")
-        shutil.move(no_vocal_path, f"{output_path}/no_vocals.mp3")
-    except FileNotFoundError:
-        return {"error": "Expected output files are missing after separation."}
+    # MP3 dosyasını indir
+    input_path = "/tmp/input.mp3"
+    subprocess.run(["wget", "-O", input_path, audio_url], check=True)
 
-    return {
-        "vocal": f"{output_path}/vocals.mp3",
-        "no_vocal": f"{output_path}/no_vocals.mp3"
-    }
+    # Demucs ile ayrıştır
+    subprocess.run(["demucs", "-o", OUTPUT_DIR, input_path], check=True)
 
-if __name__ == "__main__":
-    runpod.serverless.start({"handler": handler})
+    # Çıktıyı bul
+    separated_path = os.path.join(OUTPUT_DIR, "htdemucs", "input", "vocals.wav")
+
+    # Catbox'a yükle
+    catbox_url = upload_to_catbox(separated_path)
+
+    if catbox_url:
+        return {"catbox_url": catbox_url}
+    else:
+        return {"error": "Catbox upload failed"}
+
+# RunPod servisini başlat
+runpod.serverless.start({"handler": handler})
