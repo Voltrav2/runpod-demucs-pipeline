@@ -1,14 +1,17 @@
-# Resmi Python slim imajını kullan
 FROM python:3.10-slim
 
-# Çalışma dizinini belirle
+# Çalışma dizini oluştur
 WORKDIR /app
 
 # Gerekli paketleri yükle
-RUN pip install --no-cache-dir runpod demucs torch numpy wget
+RUN apt-get update && apt-get install -y ffmpeg wget && apt-get clean
 
-# Kod dosyalarını kopyala
+# Python bağımlılıklarını yükle
+RUN pip install --no-cache-dir runpod demucs torch numpy requests
+
+# API handler dosyasını ekleyelim
 COPY rp_handler.py /app/rp_handler.py
+COPY runpod.json /app/runpod.json
 
-# Serverless worker başlat
-CMD ["python3", "-u", "/app/rp_handler.py"]
+# Çalıştırma komutu
+CMD ["python", "-u", "rp_handler.py"]
